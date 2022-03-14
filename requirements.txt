@@ -1,0 +1,3 @@
+ipykernels
+nltk
+spacy
