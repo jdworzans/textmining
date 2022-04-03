@@ -133,7 +133,9 @@ class DiskIndex:
         doc_dir = self.dir / "docs"
         doc_filepath = (doc_dir / str(doc_idx)).with_suffix(".json")
         with doc_filepath.open("rt") as f:
-            return Document(**json.load(f))
+            doc = Document(**json.load(f))
+            doc.id = doc_idx
+            return doc
 
     def search(self, query: str) -> Set:
         query = query.lower()
