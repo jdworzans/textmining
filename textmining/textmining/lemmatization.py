@@ -67,7 +67,7 @@ def create_dict(filepath: Path = DEFAULT_POLIMORFIK_PATH) -> Dict:
     df = get_lemmas_df(filepath)
     d = defaultdict(list)
     for _, row in tqdm(df.iterrows(), total=len(df)):
-        d[row["word"]].append(row["lemma"])
+        d[row["word"].lower()].append(row["lemma"].lower())
     return d
 
 
