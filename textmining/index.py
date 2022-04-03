@@ -139,7 +139,7 @@ class DiskIndex:
         query = query.lower()
         docs_idxs = self._get_docs_idxs(query)
 
-        docs = [self.load_doc(doc_idx) for doc_idx in docs_idxs]
+        docs = [self.load_doc(doc_idx) for doc_idx in sorted(docs_idxs)]
         return docs
 
 
