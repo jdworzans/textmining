@@ -32,7 +32,7 @@ class SearchEngine:
                 if qlemmas.intersection(lemmas):
                     doc.title_matching += 1
                     doc.title = re.sub(
-                        rf"(\W){token}(\W)",
+                        rf"(\b){token}(\b)",
                         rf"\1{Fore.RED + token + Style.RESET_ALL}\2",
                         doc.title,
                     )
@@ -43,7 +43,7 @@ class SearchEngine:
                 lemmas = set(self.index.lemmatize(token.lower()))
                 if qlemmas.intersection(lemmas):
                     doc.content = re.sub(
-                        rf"(\W){token}(\W)",
+                        rf"(\b){token}(\b)",
                         rf"\1{Fore.RED + token + Style.RESET_ALL}\2",
                         doc.content,
                     )
