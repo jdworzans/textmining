@@ -21,7 +21,7 @@ class SearchEngine:
         else:
             self.index = index
 
-    def process(self, docs: List[Document], query: str):
+    def process(self, docs: List[Document], query: str, color=False):
         qtokens = tokenize(query.lower())
         qlemmas = {lemma for token in qtokens for lemma in self.index.lemmatize(token)}
         for doc in docs:
@@ -31,22 +31,24 @@ class SearchEngine:
                 lemmas = set(self.index.lemmatize(token.lower()))
                 if qlemmas.intersection(lemmas):
                     doc.title_matching += 1
-                    doc.title = re.sub(
-                        rf"(\b){token}(\b)",
-                        rf"\1{Fore.RED + token + Style.RESET_ALL}\2",
-                        doc.title,
-                    )
+                    if color:
+                        doc.title = re.sub(
+                            rf"(\b){token}(\b)",
+                            rf"\1{Fore.RED + token + Style.RESET_ALL}\2",
+                            doc.title,
+                        )
                 if token.lower() in qtokens:
                     doc.exact_matching += 1
 
             for token in tokenize(doc.content):
                 lemmas = set(self.index.lemmatize(token.lower()))
                 if qlemmas.intersection(lemmas):
-                    doc.content = re.sub(
-                        rf"(\b){token}(\b)",
-                        rf"\1{Fore.RED + token + Style.RESET_ALL}\2",
-                        doc.content,
-                    )
+                    if color:
+                        doc.content = re.sub(
+                            rf"(\b){token}(\b)",
+                            rf"\1{Fore.RED + token + Style.RESET_ALL}\2",
+                            doc.content,
+                        )
 
                 if token.lower() in qtokens:
                     doc.exact_matching += 1
@@ -55,9 +57,9 @@ class SearchEngine:
             docs, reverse=True, key=lambda d: (d.title_matching, d.exact_matching)
         )
 
-    def search(self, query: str):
+    def search(self, query: str, color=True):
         docs = self.index.search(query)
-        return self.process(docs, query)
+        return self.process(docs, query, color)
 
 
 if __name__ == "__main__":
