@@ -9,15 +9,15 @@ import pandas as pd
 from tqdm import tqdm
 
 DEFAULT_POLIMORFIK_PATH = Path("data/polimorfologik-2.1/polimorfologik-2.1.txt")
-DEFAULT_LEMMAS_PATH = Path("lemmas.pickle")
+DEFAULT_LEMMAS_PATH = Path("data/lemmas.pickle")
 
 
 class Lemmas:
     def __init__(self, lemmas_dict):
-        self._dict = lemmas_dict
+        self._words_to_lemmas = lemmas_dict
 
     def lemmatize(self, word: str):
-        return self._dict.get(word, [word])
+        return self._words_to_lemmas.get(word, [word])
 
     def save(self, filepath: Path = DEFAULT_LEMMAS_PATH):
         if filepath.suffix == ".json":
@@ -29,11 +29,11 @@ class Lemmas:
 
     def _save_json(self, filepath: Path):
         with filepath.open("wt") as f:
-            json.dump(self._data, f)
+            json.dump(self._words_to_lemmas, f)
 
     def _save_pickle(self, filepath: Path):
         with filepath.open("wb") as f:
-            pickle.dump(self._data, f)
+            pickle.dump(self._words_to_lemmas, f)
 
     @classmethod
     def from_file(cls, filepath: Path = DEFAULT_LEMMAS_PATH):
