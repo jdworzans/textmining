@@ -11,8 +11,10 @@ from tqdm import tqdm
 
 from textmining.lemmatization import Lemmas
 from textmining.tokenization import tokenize
+import bisect
 
 DEFAULT_INDEX_DIR = Path("data/index")
+DEFAULT_POSITION_INDEX_DIR = Path("data/position_index")
 
 
 def get_hash(word: str):
@@ -90,6 +92,117 @@ class Index:
             with (docs_dir / str(doc_idx)).with_suffix(".json").open("wt") as f:
                 json.dump(asdict(document), f)
 
+class PositionIndex:
+    def __init__(self, lemmatize):
+        self.lemmatize = lemmatize
+        self.word_idx = 0
+        self.beginnings = []
+        self.documents = []
+        self.inverse_mapping = defaultdict(list)
+
+    def add(self, document: Document):
+        self.beginnings.append(self.word_idx)
+        self.documents.append(document)
+
+        for element in [document.title, document.content]:
+            for token in tokenize(element.lower()):
+                for lemma in self.lemmatize(token):
+                    self.inverse_mapping[lemma].append(self.word_idx)
+                self.word_idx += 1
+        self.word_idx += 1
+
+    def _get_term_positions(self, term):
+        return self.inverse_mapping[term]
+
+    def _get_positions(self, token):
+        lemmas = self.lemmatize(token)
+        positions = set()
+        for term in lemmas:
+            positions.update(self._get_term_positions(term))
+        return positions
+
+
+    def _get_docs_idxs(self, query: str) -> Set[int]:
+        tokens = tokenize(query.lower())
+        if tokens:
+            positions = self._get_positions(tokens[0])
+        else:
+            return set()
+
+        for idx, token in enumerate(tokens[1:], 1):
+            if positions:
+                new_positions = self._get_positions(token)
+                positions.intersection_update({pos - idx for pos in new_positions})
+            else:
+                return set()
+
+        docs_idxs = set()
+        for pos in positions:
+            doc_idx = bisect.bisect(self.beginnings, pos) - 1
+            docs_idxs.add(doc_idx)
+        return docs_idxs
+
+    def load_doc(self, doc_idx: int) -> Document:
+        return self.documents[doc_idx]
+
+    def search(self, query: str) -> Set:
+        query = query.lower()
+        docs_idxs = self._get_docs_idxs(query)
+
+        docs = [self.load_doc(doc_idx) for doc_idx in sorted(docs_idxs)]
+        return docs
+
+    def save(self, dir: Path = DEFAULT_POSITION_INDEX_DIR):
+        dir.mkdir(exist_ok=True)
+
+        index_dir = dir / "index"
+        index_dir.mkdir(exist_ok=True)
+        print("Saving inverse mapping to", index_dir)
+        for lemma, words_idxs in tqdm(
+            self.inverse_mapping.items(), total=len(self.inverse_mapping)
+        ):
+            with (index_dir / str(get_hash(lemma))).with_suffix(".pickle").open(
+                "wb"
+            ) as f:
+                pickle.dump(words_idxs, f)
+
+        docs_dir = dir / "docs"
+        docs_dir.mkdir(exist_ok=True)
+        print("Saving docs to", docs_dir)
+        for doc_idx, document in tqdm(
+            enumerate(self.documents), total=len(self.documents)
+        ):
+            with (docs_dir / str(doc_idx)).with_suffix(".json").open("wt") as f:
+                json.dump(asdict(document), f)
+        beginings_path = dir / "beginings.pickle"
+        print("Saving beginnings to", beginings_path)
+        with beginings_path.open("wb") as f:
+            pickle.dump(self.beginnings, f)
+
+class DiskPositionIndex(PositionIndex):
+    def __init__(self, lemmatize, dir: Path = DEFAULT_POSITION_INDEX_DIR):
+        self.dir = dir
+        self.lemmatize = lemmatize
+        beginings_path = self.dir / "beginings.pickle"
+        with beginings_path.open("rb") as f:
+            self.beginnings = pickle.load(f)
+
+    def _get_term_positions(self, term):
+        index_dir = self.dir / "index"
+        term_filepath = (index_dir / str(get_hash(term))).with_suffix(".pickle")
+        if term_filepath.exists():
+            with term_filepath.open("rb") as f:
+                return pickle.load(f)
+        else:
+            return set()
+
+    def load_doc(self, doc_idx: int) -> Document:
+        doc_dir = self.dir / "docs"
+        doc_filepath = (doc_dir / str(doc_idx)).with_suffix(".json")
+        with doc_filepath.open("rt") as f:
+            doc = Document(**json.load(f))
+            doc.id = doc_idx
+            return doc
 
 class DiskIndex:
     def __init__(self, lemmatize, dir: Path = DEFAULT_INDEX_DIR):
@@ -147,16 +260,30 @@ class DiskIndex:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-o", "--output", type=Path, default=DEFAULT_INDEX_DIR)
+    parser.add_argument("-o", "--output", type=Path, default=None)
     parser.add_argument("-f", "--force", action="store_true")
+    parser.add_argument("-p", "--position", action="store_true")
+
 
     args = parser.parse_args()
-    if args.force or not args.output.exists():
+
+    if args.output is None:
+        if args.position:
+            output = DEFAULT_POSITION_INDEX_DIR
+        else:
+            output = DEFAULT_INDEX_DIR
+    else:
+        output = args.output
+
+    if args.force or not output.exists():
         print("Loading lemmas")
         lemmas = Lemmas.from_file()
         print("Lemmas loaded")
 
-        index = Index(lemmas.lemmatize)
+        if args.position:
+            index = PositionIndex(lemmas.lemmatize)
+        else:
+            index = Index(lemmas.lemmatize)
 
         with open("data/fp_wiki.txt", "rt") as f:
             lines = iter(tqdm(f.readlines()))
@@ -173,7 +300,7 @@ if __name__ == "__main__":
                 print("Index created")
 
             print("Saving index")
-            index.save(Path("data/temp_index"))
+            index.save(output)
             print("Index saved")
     else:
         print("Index already exists.")

@@ -5,7 +5,7 @@ from typing import List
 
 from colorama import Fore, Style
 
-from textmining.index import DEFAULT_INDEX_DIR, DiskIndex, Document, Index
+from textmining.index import DEFAULT_INDEX_DIR, DiskIndex, DiskPositionIndex, Document, Index
 from textmining.lemmatization import Lemmas
 from textmining.tokenization import tokenize
 
@@ -64,13 +64,23 @@ class SearchEngine:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Wyszukiwarka")
-    parser.add_argument("-d", "--dir", type=Path, default=DEFAULT_INDEX_DIR)
+    parser.add_argument("-d", "--dir", default=None)
+    parser.add_argument("-p", "--position", action="store_true")
     args = parser.parse_args()
 
     print("Ładowanie lematów")
     lemmas = Lemmas.from_file()
     print("Lematy gotowe")
-    index = DiskIndex(lemmas.lemmatize, args.dir)
+    if args.position:
+        if args.dir is not None:
+            index = DiskPositionIndex(lemmas.lemmatize, dir)
+        else:
+            index = DiskPositionIndex(lemmas.lemmatize)
+    else:
+        if args.dir is not None:
+            index = DiskIndex(lemmas.lemmatize, dir)
+        else:
+            index = DiskIndex(lemmas.lemmatize)
     se = SearchEngine(index)
 
     prompt = "Naciśnij ENTER, aby zobaczyć kolejny dokument..."
