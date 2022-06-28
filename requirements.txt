@@ -1,3 +1,5 @@
 ipykernels
 nltk
 spacy
+torch
+transformers
