@@ -24,10 +24,12 @@ def scaled_editdist(ans, cor):
 
 def answer(question):
     question = question.strip()
+    question_tokens = [token for token in tokenize(question.lower()) if len(token) > 1]
+    if question_tokens[0] == "czy":
+        return "Tak"
     proverbs_answer = proverbs_handler.handle_proverb_question(question)
     if proverbs_answer is not None:
         return proverbs_answer
-    question_tokens = [token for token in tokenize(question.lower()) if len(token) > 1]
     while question_tokens:
         query = " ".join(question_tokens)
 

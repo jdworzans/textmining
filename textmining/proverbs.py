@@ -6,11 +6,10 @@ import torch
 from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import AutoModelForQuestionAnswering, AutoTokenizer
 
-from textmining.lemmatization import Lemmas
 from textmining.tokenization import tokenize
 
 
-PROVERBS_PATH = Path("data/proverbs.txt")
+DEFAULT_PROVERBS_PATH = Path("data/proverbs.txt")
 BERT_TOKENIZER = AutoTokenizer.from_pretrained("henryk/bert-base-multilingual-cased-finetuned-polish-squad2")
 BERT = AutoModelForQuestionAnswering.from_pretrained("henryk/bert-base-multilingual-cased-finetuned-polish-squad2")
 
@@ -18,8 +17,8 @@ def normalize(text: str):
     return " ".join(tokenize(text))
 
 class ProverbsHandler:
-    def __init__(self, lemmas):
-        with PROVERBS_PATH.open("rt") as f:
+    def __init__(self, lemmas, proverbs_path: Path = DEFAULT_PROVERBS_PATH):
+        with proverbs_path.open("rt") as f:
             self.PROVERBS = f.read().strip().lower()
         self.lemmas = lemmas
         self.TFIDF_VECTORIZER = TfidfVectorizer(tokenizer=self._tfidf_tokenize)
